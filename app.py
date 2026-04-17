@@ -5,7 +5,7 @@ from groq import Groq
 import re
 
 # 1. 페이지 설정
-st.set_page_config(page_title="AI PR Monitor", page_icon="📈", layout="centered")
+st.set_page_config(page_title="HCC AI Monitor", page_icon="📈", layout="centered")
 
 # CSS 고도화 (글자 겹침 방지 및 박스 디자인 개선)
 st.markdown("""
@@ -71,6 +71,7 @@ def analyze_sentiment(title, snippet, client):
     # AI에게 형식을 엄격하게 요구하는 프롬프트
     prompt = f"""당신은 현대카드 소속 PR 전문가입니다. 다음 뉴스를 분석해 현대카드에게 [긍정], [부정], [중립] 중 어느 감성에 해당하는지 분류하고 이유를 설명하세요.
     해당 감성이 현대카드와 관련한 것인지, 경쟁사에 대한 것인지를 구분한 뒤, [분류]는 현대카드를 기준으로 답하세요.
+    제목에 "현대카드"가 포함되어 있지 않은 경우엔 제목 자체의 감성을 분석하세요.
     반드시 첫 단어를 [분류]로 시작하세요. 예: [긍정] 실적 발표 수치가 시장 기대치를 상회함.
     
     뉴스 제목: {title}
@@ -155,11 +156,11 @@ if st.session_state.analysis_results:
         st.markdown(f"""
         <div class="news-card">
             <div class="sentiment-tag {tag_class}">{res['emotion']}</div>
-            <div class="section-label">원본 기사 제목</div>
+            <div class="section-label">제목</div>
             <div class="content-text"><b>{res['title']}</b></div>
-            <div class="section-label">핵심 요약 (Snippet)</div>
+            <div class="section-label">요약</div>
             <div class="content-text" style="font-size: 0.95em; color: #555;">{res['summary']}</div>
-            <div class="section-label">AI 감성 분석 근거</div>
+            <div class="section-label">AI 감성 분석</div>
             <div class="reason-box">{res['reason']}</div>
             <div style="margin-top: 15px; font-size: 0.8em; color: #888;">
                 📅 {res['published']} | 🏢 {res['source']}
