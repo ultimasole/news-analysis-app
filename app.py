@@ -5,31 +5,17 @@ from groq import Groq
 import re
 
 # 1. 페이지 설정
-st.set_page_config(page_title="Global News AI Dashboard", page_icon="📈", layout="centered")
+st.set_page_config(page_title="News Sentiment Dashboard", page_icon="📈", layout="centered")
 
-# CSS 고도화 (카드 디자인 및 애니메이션)
+# CSS 고도화
 st.markdown("""
     <style>
-    .news-card {
-        padding: 24px;
-        border-radius: 12px;
-        background-color: white;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-        border: 1px solid #f0f2f6;
-    }
-    .sentiment-tag {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.85em;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .pos { background-color: #e6f4ea; color: #1e8e3e; } /* 긍정: 초록 */
-    .neg { background-color: #fce8e6; color: #d93025; } /* 부정: 빨강 */
-    .neu { background-color: #f1f3f4; color: #5f6368; } /* 중립: 회색 */
-    
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #f0f2f6; }
+    .news-card { padding: 24px; border-radius: 12px; background-color: white; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.07); border: 1px solid #f0f2f6; }
+    .sentiment-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; margin-bottom: 10px; }
+    .pos { background-color: #e6f4ea; color: #1e8e3e; }
+    .neg { background-color: #fce8e6; color: #d93025; }
+    .neu { background-color: #f1f3f4; color: #5f6368; }
     .news-title { font-size: 1.4em; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; line-height: 1.3; }
     .news-meta { color: #70757a; font-size: 0.85em; margin-bottom: 15px; }
     .news-summary { font-size: 0.95em; color: #3c4043; line-height: 1.6; margin-bottom: 18px; padding-left: 10px; border-left: 3px solid #dee2e6; }
@@ -41,7 +27,6 @@ st.markdown("""
 with st.sidebar:
     st.header("⚙️ 분석 설정")
     api_key = st.text_input("Groq API Key", type="password")
-    
     lang_options = {
         "한국어 (KR)": {"lang": "ko", "country": "KR"},
         "영어 (US)": {"lang": "en", "country": "US"},
@@ -51,35 +36,25 @@ with st.sidebar:
     selected_lang = st.selectbox("검색 국가/언어", list(lang_options.keys()))
     config = lang_options[selected_lang]
     st.divider()
-    st.caption("AI 분석 결과는 Llama 3.3 모델을 기반으로 생성됩니다.")
+    st.caption("AI 분석 모델: Llama 3.3-70B")
 
 # 3. 메인 화면
-st.title("📊 뉴스 감성 대시보드")
+st.title("📊 뉴스 감성 분석 대시보드")
 
-col1, col2 = st.columns([3, 1])
-with col1:
-    keyword = st.text_input("분석할 키워드를 입력하세요", value='"현대카드"')
-with col2:
+col_search, col_period = st.columns([3, 1])
+with col_search:
+    keyword = st.text_input("분석할 키워드", value='"현대카드"')
+with col_period:
     period = st.selectbox("기간", ["1d", "7d", "30d"], index=1)
 
-# HTML 태그 제거 및 요약 정제 함수
 def clean_summary(html_text, title):
-    # HTML 태그 제거
     clean = re.sub('<[^<]+?>', '', html_text)
-    # 제목과 내용이 겹치면 요약 부분만 추출 (Google News 특성 대응)
     if title in clean:
         clean = clean.replace(title, "").strip()
     return clean if clean else "요약 내용 없음"
 
-# AI 감성 분석 함수 (포맷 강제)
 def analyze_sentiment(title, snippet, client):
-    prompt = f"""
-    당신은 경제 뉴스 분석 전문가입니다. 아래 뉴스를 분석하여 긍정, 부정, 중립 중 하나로 분류하고 이유를 설명하세요.
-    반드시 첫 단어에 [긍정], [부정], [중립] 중 하나를 적으세요.
-    
-    제목: {title}
-    요약: {snippet}
-    """
+    prompt = f"경제 뉴스 분석가로서 아래 뉴스를 [긍정], [부정], [중립] 중 하나로 분류하고 이유를 한 문장으로 쓰세요.\n\n제목: {title}\n요약: {snippet}"
     try:
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -88,14 +63,14 @@ def analyze_sentiment(title, snippet, client):
         )
         return completion.choices[0].message.content
     except:
-        return "[중립] 분석을 수행할 수 없습니다."
+        return "[중립] 분석 실패"
 
-# 4. 분석 시작
-if st.button("실시간 분석 실행", use_container_width=True):
+# 4. 분석 실행
+if st.button("실시간 분석 및 통계 산출", use_container_width=True):
     if not api_key:
         st.error("Groq API 키를 입력해주세요.")
     else:
-        with st.spinner("최신 기사를 분석하고 있습니다..."):
+        with st.spinner("최신 기사를 분석하고 통계를 생성하는 중입니다..."):
             client = Groq(api_key=api_key)
             gn = GoogleNews(lang=config['lang'], country=config['country'])
             search = gn.search(keyword, when=period)
@@ -103,33 +78,63 @@ if st.button("실시간 분석 실행", use_container_width=True):
             if not search['entries']:
                 st.warning("수집된 뉴스가 없습니다.")
             else:
+                results = []
+                pos_count, neg_count, neu_count = 0, 0, 0
+                
+                # 데이터 수집 및 분석
                 for entry in search['entries'][:10]:
                     title = entry.title
-                    # 요약 내용 정제
                     summary = clean_summary(entry.summary, title)
                     analysis = analyze_sentiment(title, summary, client)
                     
-                    # 감성에 따른 색상 클래스 결정
-                    color_class = "neu"
-                    if "[긍정]" in analysis: color_class = "pos"
-                    elif "[부정]" in analysis: color_class = "neg"
+                    # 감성 분류 카운트
+                    if "[긍정]" in analysis: 
+                        color_class = "pos"
+                        pos_count += 1
+                    elif "[부정]" in analysis: 
+                        color_class = "neg"
+                        neg_count += 1
+                    else: 
+                        color_class = "neu"
+                        neu_count += 1
                     
-                    # 카드 출력
+                    results.append({
+                        "title": title,
+                        "summary": summary,
+                        "analysis": analysis,
+                        "color_class": color_class,
+                        "published": entry.published,
+                        "source": entry.source.title,
+                        "link": entry.link
+                    })
+                
+                # --- [통계 섹션 추가] ---
+                total = len(results)
+                st.subheader("📈 실시간 감성 분석 통계")
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("총 검색 결과", f"{total}건")
+                c2.metric("긍정", f"{pos_count}건", f"{(pos_count/total)*100:.1f}%")
+                c3.metric("부정", f"{neg_count}건", f"-{(neg_count/total)*100:.1f}%", delta_color="inverse")
+                c4.metric("중립", f"{neu_count}건", f"{(neu_count/total)*100:.1f}%", delta_color="off")
+                st.divider()
+
+                # --- [카드 출력 섹션] ---
+                for res in results:
                     st.markdown(f"""
                     <div class="news-card">
-                        <div class="sentiment-tag {color_class}">
-                            {analysis.split(']')[0][1:] if ']' in analysis else '중립'}
+                        <div class="sentiment-tag {res['color_class']}">
+                            {res['analysis'].split(']')[0][1:] if ']' in res['analysis'] else '중립'}
                         </div>
-                        <div class="news-title">{title}</div>
-                        <div class="news-meta">📅 {entry.published} | 🏢 {entry.source.title}</div>
+                        <div class="news-title">{res['title']}</div>
+                        <div class="news-meta">📅 {res['published']} | 🏢 {res['source']}</div>
                         <div class="news-summary">
-                            <b>Summary:</b> {summary}
+                            <b>제목:</b> {res['summary']}
                         </div>
-                        <div class="analysis-box" style="background-color: {'#f1f8e9' if color_class=='pos' else '#fff5f5' if color_class=='neg' else '#f8f9fa'};">
-                            <b>🤖 AI Insights:</b><br>{analysis.split(']')[-1].strip() if ']' in analysis else analysis}
+                        <div class="analysis-box" style="background-color: {'#f1f8e9' if res['color_class']=='pos' else '#fff5f5' if res['color_class']=='neg' else '#f8f9fa'};">
+                            <b>🤖 AI Insights:</b><br>{res['analysis'].split(']')[-1].strip() if ']' in res['analysis'] else res['analysis']}
                         </div>
                         <br>
-                        <a href="{entry.link}" target="_blank" style="text-decoration: none;">
+                        <a href="{res['link']}" target="_blank" style="text-decoration: none;">
                             <div style="text-align: center; padding: 10px; border: 1px solid #007BFF; color: #007BFF; border-radius: 6px; font-weight: bold;">기사 원문 보기</div>
                         </a>
                     </div>
