@@ -48,17 +48,28 @@ if 'analysis_results' not in st.session_state: st.session_state.analysis_results
 if 'filter_emotion' not in st.session_state: st.session_state.filter_emotion = "전체"
 
 def clean_summary(html_text, title):
-    # HTML 태그 제거 및 공백 정제
+    # 1. HTML 태그 제거 및 공백 정제
     clean = re.sub('<[^<]+?>', '', html_text).strip()
     clean = clean.replace('&nbsp;', ' ')
-    # 만약 요약이 제목과 90% 이상 일치하면 '본문 요약 없음' 처리
-    if title in clean and len(clean) < len(title) + 10:
-        return "해당 기사는 요약 정보를 제공하지 않습니다. 원문 링크를 참조하세요."
+    
+    # 2. '제목'과 '요약'의 중복 제거 (가장 중요한 부분)
+    # 제목이 요약의 앞부분에 포함되어 있다면 그 부분만 삭제
+    if clean.startswith(title):
+        clean = clean[len(title):].strip()
+    
+    # 3. 언론사 이름이 반복되는 경우도 삭제 (예: "- 조선일보")
+    # 보통 RSS 끝에 ' - 매체명'이 붙는 경우가 많음
+    clean = re.split(r' - \w+', clean)[0].strip()
+
+    # 4. 만약 다 지우고 났더니 남은 게 없거나 너무 짧다면?
+    if len(clean) < 5:
+        return "해당 매체에서 본문 요약을 제공하지 않습니다. 원문을 통해 상세 내용을 확인하세요."
+        
     return clean
 
 def analyze_sentiment(title, snippet, client):
     # AI에게 형식을 엄격하게 요구하는 프롬프트
-    prompt = f"""당신은 PR 전문가입니다. 다음 뉴스를 분석해 [긍정], [부정], [중립] 중 하나로 분류하고 이유를 설명하세요.
+    prompt = f"""당신은 현대카드 소속 PR 전문가입니다. 다음 뉴스를 분석해 현대카드에게 [긍정], [부정], [중립] 중 어느 감성에 해당하는지 분류하고 이유를 설명하세요.
     반드시 첫 단어를 [분류]로 시작하세요. 예: [긍정] 실적 발표 수치가 시장 기대치를 상회함.
     
     뉴스 제목: {title}
