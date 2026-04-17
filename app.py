@@ -69,7 +69,7 @@ def clean_summary(html_text, title):
 
 def analyze_sentiment(title, snippet, client):
     # AI에게 형식을 엄격하게 요구하는 프롬프트
-    prompt = f"""
+    prompt = """
     당신은 PR 전문가다. 다음 뉴스를 분석해 현대카드와 현대카드 비즈니스 입장에서 [긍정], [부정], [중립] 중 어느에 해당하는지 분류하고 이유를 설명하라.
     반드시 첫 단어를 [분류]로 시작하라. 예: [긍정] 실적 발표 수치가 시장 기대치를 상회함.
     
